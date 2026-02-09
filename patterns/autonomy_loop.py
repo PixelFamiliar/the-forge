@@ -1,32 +1,40 @@
-import os
-import json
+import sqlite3
 import subprocess
+import os
 
-def sense_trends():
-    print("Sensing frontier narratives...")
-    # Call discourse-tracker scripts
-    subprocess.run(["python3", "/Users/scott/clawd/skills/discourse-tracker/scripts/sense.py"])
+def check_for_mentions():
+    db_path = "/Users/scott/clawd/memory/main.sqlite"
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
     
-def analyze_and_act():
-    print("Analyzing signals for autonomous action...")
-    # In a real scenario, this would query the SQLite database
-    # For now, we simulate the 'High Signal' check
-    high_signal_found = False 
+    # Look for interesting handles or keywords
+    cursor.execute("SELECT handle, content FROM agent_discourse WHERE content LIKE '%dashboard%' OR content LIKE '%OpenClaw%' ORDER BY timestamp DESC LIMIT 5")
+    results = cursor.fetchall()
     
-    if high_signal_found:
-        print("Signal detected: Preparing notification...")
-        # Prepare content/skill drafts here
-        return "HIGH_SIGNAL"
-    else:
-        print("No high-signal trends found.")
-        return "ROUTINE"
+    actions = []
+    for handle, content in results:
+        if "edbutlerx" in handle.lower():
+            actions.append({
+                "type": "x_reply",
+                "handle": handle,
+                "context": content,
+                "suggestion": f"@{handle} High-performance dashboards for OpenClaw are exactly what we're tracking in the Nexus. 👾 The architecture needs to handle real-time agent discourse, not just static metrics. Ours is live in dev—let's compare notes on the orchestration layer. 🚀"
+            })
+    
+    conn.close()
+    return actions
 
 if __name__ == "__main__":
-    sense_trends()
-    status = analyze_and_act()
+    print("Sentinel Autonomy Check...")
+    actions = check_for_mentions()
     
-    # Implementation of Silent Exit architecture
-    if status == "ROUTINE":
-        print("SENTINEL_SIGNAL: HEARTBEAT_OK")
+    if actions:
+        for action in actions:
+            print(f"SUGGESTED ACTION: {action['type']} to {action['handle']}")
+            # Create a draft file for user review
+            draft_path = f"/Users/scott/clawd/deliverables/content/drafts/social_reply_{action['handle']}.md"
+            with open(draft_path, "w") as f:
+                f.write(f"Draft Reply to {action['handle']}:\n\n{action['suggestion']}\n\nContext: {action['context']}")
+            print(f"Draft saved to {draft_path}")
     else:
-        print("SENTINEL_SIGNAL: ACTION_REQUIRED")
+        print("HEARTBEAT_OK")
